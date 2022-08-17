@@ -1,0 +1,1 @@
+from ._sequence import generate_random_sequence
