@@ -3,7 +3,7 @@ import innvestigate
 import innvestigate.utils as iutils
 from keras import backend as K
 from keras.utils import to_categorical
-import exoNet
+import exopy
 
 METHODS = {
     "DeepTaylor": {"name": "deep_taylor"},
@@ -20,7 +20,7 @@ def interpret(network, data, labels, method="DeepTaylor", **method_kwargs):
             fModel = network.model
             target_tensor = fModel(input_tensor)
             
-            y_encoded, _ = exoNet.utils.label_encoder(labels, network.label_encoder)
+            y_encoded, _ = exopy.utils.label_encoder(labels, network.label_encoder)
             y_onehot = to_categorical(y_encoded, num_classes=2)
             
             attributions = de.explain('deeplift', target_tensor, input_tensor, data, ys=y_onehot, **method_kwargs)

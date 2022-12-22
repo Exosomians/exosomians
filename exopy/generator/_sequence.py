@@ -14,7 +14,7 @@ LINELEN = 70
 import sys, os, string
 import numpy as np
 
-from exoNet.generator._erikson_dinucl_shuffle import dinuclShuffle
+from exopy.generator._erikson_dinucl_shuffle import dinuclShuffle
 
 
 def generate_random_sequence(sequences, NUM):

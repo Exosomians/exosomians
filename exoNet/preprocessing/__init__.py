@@ -1,1 +1,0 @@
-from ._seq_preprocessing import seq_encoder
