@@ -1,4 +1,4 @@
-import exoNet
+import exopy
 import numpy as np
 
 
@@ -9,14 +9,14 @@ motif_len = 10
 sequences = np.load(f"./Data/{data_name}/sequences.npy", allow_pickle=True)[:, :, :4]
 labels = np.load(f"./Data/{data_name}/labels.npy", allow_pickle=True).reshape((-1, ))
 
-deepbind = exoNet.models.DeepBind(seq_len=data.shape[1],
-                                  n_channels=data.shape[2],
-                                  n_classes=2,
-                                  use_batchnorm=True,
-                                  lr=0.00001,
-                                  padding="valid",
-                                  model_path=f"./models/DeepBind/{data_name}/",
-                                  dropout_rate=0.1,
+deepbind = exopy.models.DeepBind(seq_len=data.shape[1],
+                                 n_channels=data.shape[2],
+                                 n_classes=2,
+                                 use_batchnorm=True,
+                                 lr=0.00001,
+                                 padding="valid",
+                                 model_path=f"./models/DeepBind/{data_name}/",
+                                 dropout_rate=0.1,
                                  )
 
 deepbind.train(data,

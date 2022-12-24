@@ -167,17 +167,17 @@ class ExoNetModule(pl.LightningModule):
             })
         elif network == 'deepbind':
             self.config = AttributeDict({
-                'n_conv_blocks': config.get('n_conv_blocks', 1),
+                'n_conv_blocks': config.get('n_conv_blocks', 3),
                 'n_conv_layers': config.get('n_conv_layers', 1),
                 'kernel_size': config.get('kernel_size', 5),
                 'n_filters': config.get('n_filters', 32),
-                'pooling': config.get('pooling', 'avg'),
+                'pooling': config.get('pooling', 'max'),
                 'pooling_size': config.get('pooling_size', 2),
                 'activation_fn': config.get('activation_fn', 'relu'),
-                'use_batch_norm': config.get('use_batch_norm', True),
+                'use_batch_norm': config.get('use_batch_norm', False),
                 'use_layer_norm': config.get('use_layer_norm', False),
                 'dropout_rate': config.get('dropout_rate', 0.1),
-                'n_head_layers': config.get('n_head_layers', 3),
+                'n_head_layers': config.get('n_head_layers', 2),
                 'n_head_hidden': config.get('n_head_hidden', 256),
             })
         elif network in ['exolstm', 'exogru']:

@@ -1,5 +1,5 @@
 import os
-import exoNet
+import exopy
 import numpy as np
 import pandas as pd
 import argparse
@@ -62,20 +62,20 @@ one_hot_reverse_encoder = {
     3 : [0, 0, 0, 1]
 }
 
-random_sequences = exoNet.gen.generate_random_sequence(sequences.values, NUM=n_generated)
+random_sequences = exopy.gen.generate_random_sequence(sequences.values, NUM=n_generated)
 
 max_len = 50
-sequences_encoded = exoNet.pep.seq_encoder(random_sequences, char_encoder, max_len, unknown_char=True)
+sequences_encoded = exopy.pep.seq_encoder(random_sequences, char_encoder, max_len, unknown_char=True)
 
-network = exoNet.models.ExoCNN(seq_len=sequences_encoded.shape[1],
-                               n_channels=sequences_encoded.shape[2],
-                               n_classes=2,
-                               padding="same",
-                               use_batchnorm=True,
-                               lr=0.0001,
-                               model_path=f"./models/ExoCNN/{model_name}/",
-                               dropout_rate=0.25,
-                               )
+network = exopy.models.ExoCNN(seq_len=sequences_encoded.shape[1],
+                              n_channels=sequences_encoded.shape[2],
+                              n_classes=2,
+                              padding="same",
+                              use_batchnorm=True,
+                              lr=0.0001,
+                              model_path=f"./models/ExoCNN/{model_name}/",
+                              dropout_rate=0.25,
+                              )
 network.restore_model_weights()
 
 secretion_probs = network.model.predict(sequences_encoded)[:, 1]
