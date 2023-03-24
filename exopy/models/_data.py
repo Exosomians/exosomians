@@ -1,4 +1,6 @@
 # Inspired by MOSES Github repository (https://github.com/molecularsets/moses/blob/master/moses/utils.py)
+import logging
+import multiprocessing
 from typing import List, Union, Optional
 
 import numpy as np
@@ -6,11 +8,6 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data import SubsetRandomSampler
-
-import logging
-import multiprocessing
-
-from tqdm import tqdm
 
 from exopy.models._constants import ExoNetCONSTANTS
 from exopy.models._utils import categorical_encoder

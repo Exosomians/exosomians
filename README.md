@@ -9,7 +9,7 @@
 To install the latest version from PyPI, simply use the following bash script:
 
 ```bash
-pip install exopy
+pip install exosomians
 ```
 
 or you can clone this repository and install via setup.py file:

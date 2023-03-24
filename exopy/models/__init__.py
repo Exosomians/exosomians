@@ -1,6 +1,3 @@
-# import torch.multiprocessing
-# torch.multiprocessing.set_sharing_strategy('file_system')
-
 from ._model import ExoNet
 from ._deepbind import DeepBind
 from ._exo_fcn import ExoFCN

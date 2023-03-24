@@ -1,27 +1,17 @@
-import os
-import json
-import pickle
-import random
 from collections import defaultdict
-from typing import Optional, List, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
+import pytorch_lightning as pl
+import scanpy as sc
 import torch
-import torch.nn as nn
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, TQDMProgressBar
-from torch.autograd import Variable
-from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ._data import RNASeqCSVDataset, SpecialTokens
 from ._base import RNAClassifierBase
-import pytorch_lightning as pl
-import torch.nn.functional as F
-
-import scanpy as sc
-
+from ._data import RNASeqCSVDataset
 from ._module import ExoNetModule
 from ..utils import load_fasta
 
