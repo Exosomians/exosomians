@@ -15,8 +15,8 @@ pip install exopy
 or you can clone this repository and install via setup.py file:
 
 ```bash
-git clone https://github.com/saberi1/Exosomians
-cd Exosomians
+git clone https://github.com/Exosomians/exosomians
+cd exosomians
 python setup.py -q
 ``` 
 
