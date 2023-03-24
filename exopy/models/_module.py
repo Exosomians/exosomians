@@ -220,36 +220,6 @@ class ExoNetModule(pl.LightningModule):
         self.config['n_output'] = config.get('n_output', 1)
         self.config['lr'] = config.get('lr', 1e-4)
 
-    # def mixup_data(self, batch, alpha: float = 1.0):
-    #     """
-    #         Returns mixed inputs, pairs of targets, and lambda
-    #     """
-    #     alpha = max(0.0, alpha)
-    #
-    #     if alpha == 0.0:
-    #         mixup_lambda = 1.0
-    #     else:
-    #         mixup_lambda = np.random.beta(alpha, alpha)
-    #
-    #     x = batch[ExoNetCONSTANTS.SEQ_KEY]
-    #     y = batch[ExoNetCONSTANTS.Y_KEY]
-    #
-    #     batch_size = x.size()[0]
-    #     index = torch.randperm(batch_size).to(x.device)
-    #
-    #     mixed_x = mixup_lambda * x + (1. - mixup_lambda) * x[index, :]
-    #
-    #     batch[ExoNetCONSTANTS.SEQ_KEY] = mixed_x
-    #     batch[GeneCPA_REGISTRY_KEYS.X_KEY + '_true'] = x
-    #     batch[GeneCPA_REGISTRY_KEYS.GENE_ADV_KEY + '_mixup'] = y_knockouts[index]
-    #     batch[GeneCPA_REGISTRY_KEYS.GENE_KO_KEY] = mixed_knockouts
-    #     batch[GeneCPA_REGISTRY_KEYS.GENE_KO_KEY + '_true'] = knockouts
-    #
-    #     for covar, encoder in self.covars_encoder.items():
-    #         batch[covar + '_mixup'] = batch[covar][index]
-    #
-    #     return batch, mixup_lambda
-
     def forward(self, tensors, return_embeddings=False):
         x = [self.input_embedding(x_i) for x_i in tensors[ExoNetCONSTANTS.SEQ_KEY]]
         x = nn.utils.rnn.pack_sequence(x, enforce_sorted=False)

@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Optional, List, Union
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, TQDMProgressBar
@@ -14,7 +15,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ._data import RNASeqDataset, SpecialTokens
+from ._data import RNASeqCSVDataset, SpecialTokens
 from ._base import RNAClassifierBase
 import pytorch_lightning as pl
 import torch.nn.functional as F
@@ -22,12 +23,13 @@ import torch.nn.functional as F
 import scanpy as sc
 
 from ._module import ExoNetModule
+from ..utils import load_fasta
 
 
 class ExoNet(RNAClassifierBase):
     token_encoder: dict = {}
     module: ExoNetModule = None
-    data: RNASeqDataset = None
+    data: RNASeqCSVDataset = None
 
     @classmethod
     def load(cls, path: str):
@@ -49,50 +51,30 @@ class ExoNet(RNAClassifierBase):
                                                        **kwargs)
 
     @classmethod
-    def setup_dataset(cls, path, seq_key, target_key, categorical_keys=[], continuous_keys=[], fraction=1.0):
-        dataset = RNASeqDataset(path=path,
+    def setup_dataset(cls, path: str, seq_key: str, target_key: str, categorical_keys=[], continuous_keys=[],
+                      fraction=1.0):
+        dataset = cls.prepare_data(path, seq_key, target_key, categorical_keys, continuous_keys, fraction)
+
+        cls.n_tokens = dataset.n_tokens
+        cls.token_encoder = dataset.c2i
+        cls.data = dataset
+
+    @staticmethod
+    def prepare_data(path_or_df: Union[str, pd.DataFrame], seq_key: str, target_key: Optional[str] = None,
+                     categorical_keys=[], continuous_keys=[], fraction: Optional[float] = 1.0):
+
+        if isinstance(path_or_df, str) and path_or_df.endswith('.fasta'):
+            path_or_df = load_fasta(path_or_df, seq_key, target_key)
+            categorical_keys = []
+            continuous_keys = []
+
+        return RNASeqCSVDataset(path_or_df=path_or_df,
                                 seq_key=seq_key,
                                 target_key=target_key,
                                 categorical_keys=categorical_keys,
                                 continuous_keys=continuous_keys,
                                 fraction=fraction,
                                 )
-        cls.n_tokens = dataset.n_tokens
-        cls.token_encoder = dataset.c2i
-        cls.data = dataset
-
-    def get_embeddings(self, batch_size: int = 128, **kwargs) -> sc.AnnData:
-        self.module.eval()
-        dataset = self.data
-
-        dataloader = DataLoader(dataset,
-                                batch_size=batch_size,
-                                pin_memory=False,
-                                num_workers=0,
-                                shuffle=False,
-                                collate_fn=dataset.collate_fn)
-
-        embeddings = []
-        probs = []
-        for batch in tqdm(dataloader):
-            # for key, value in batch.items():
-            #     if isinstance(batch[key], torch.Tensor):
-            #         batch[key].to(self.module.device)
-            #     else:
-            #         batch[key] = torch.tensor(batch[key]).to(self.module.device)
-
-            with torch.no_grad():
-                logits, batch_embeddings = self.module.forward(batch, return_embeddings=True)
-                batch_probs = torch.sigmoid(logits)
-
-            embeddings.append(batch_embeddings.detach().cpu().numpy())
-            probs.append(batch_probs.detach().cpu().numpy())
-
-        adata = sc.AnnData(X=np.concatenate(embeddings, axis=0))
-        adata.obs = self.data.df.copy()
-        adata.obs['prob'] = np.concatenate(probs, axis=0).reshape(-1,)
-
-        return adata
 
     def fit(self, max_epochs: int = 500,
             batch_size: int = 128,
@@ -128,6 +110,58 @@ class ExoNet(RNAClassifierBase):
                                   default_root_dir=save_path, **kwargs)
 
         self.trainer.fit(self.module, train_dataloader, valid_dataloader)
+
+    @torch.no_grad()
+    def get_embeddings(self, data: Optional[RNASeqCSVDataset] = None, batch_size: int = 128, **kwargs) -> sc.AnnData:
+        self.module.eval()
+        dataset = self.data if data is None else data
+
+        dataloader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                pin_memory=False,
+                                num_workers=0,
+                                shuffle=False,
+                                collate_fn=dataset.collate_fn)
+
+        embeddings = []
+        probs = []
+        for batch in tqdm(dataloader):
+            logits, batch_embeddings = self.module.forward(batch, return_embeddings=True)
+            batch_probs = torch.sigmoid(logits)
+
+            embeddings.append(batch_embeddings.detach().cpu().numpy())
+            probs.append(batch_probs.detach().cpu().numpy())
+
+        adata = sc.AnnData(X=np.concatenate(embeddings, axis=0))
+        adata.obs = self.data.df.copy()
+        adata.obs['prob'] = np.concatenate(probs, axis=0).reshape(-1, )
+
+        return adata
+
+    @torch.no_grad()
+    def predict(self, data: Optional[RNASeqCSVDataset] = None, batch_size: Optional[int] = 32) -> pd.DataFrame:
+        self.module.eval()
+        dataset = self.data if data is None else data
+
+        dataloader = DataLoader(dataset,
+                                batch_size=batch_size,
+                                pin_memory=False,
+                                num_workers=0,
+                                shuffle=False,
+                                collate_fn=dataset.collate_fn)
+
+        df = defaultdict(list)
+        df['sequence'] = list(dataset.sequences)
+        probs = []
+        for batch in tqdm(dataloader):
+            logits = self.module.forward(batch, return_embeddings=False)
+            batch_probs = torch.sigmoid(logits)
+
+            probs.append(batch_probs.detach().cpu().numpy())
+
+        df['prob'] = list(np.concatenate(probs, axis=0).reshape(-1, ))
+
+        return pd.DataFrame(df)
 
     def save(self, path: str) -> None:
         pass

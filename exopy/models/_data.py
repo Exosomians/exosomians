@@ -26,11 +26,11 @@ class SpecialTokens:
     unk = '<unk>'
 
 
-class RNASeqDataset(Dataset):
+class RNASeqCSVDataset(Dataset):
     def __init__(self,
-                 path: str,
+                 path_or_df: Union[str, pd.DataFrame],
                  seq_key: str,
-                 target_key: str,
+                 target_key: Optional[str] = None,
                  categorical_keys: Optional[Union[List[str]]] = [],
                  continuous_keys: Optional[Union[List[str]]] = [],
                  fraction: float = 1.0,
@@ -42,7 +42,6 @@ class RNASeqDataset(Dataset):
         if isinstance(continuous_keys, str):
             continuous_keys = [continuous_keys]
 
-        self.path = path
         self.seq_key = seq_key
         self.target_key = target_key
         self.cat_keys = categorical_keys
@@ -53,25 +52,31 @@ class RNASeqDataset(Dataset):
         ExoNetCONSTANTS.CAT_COVS_KEYS = categorical_keys
         ExoNetCONSTANTS.CONT_COVS_KEYS = continuous_keys
 
-        self.df = pd.read_csv(path, **kwargs)
+        if isinstance(path_or_df, str):
+            self.df = pd.read_csv(path_or_df, **kwargs)
+        else:
+            self.df = path_or_df
 
         if 0.0 < fraction < 1.0:
             indices = np.random.choice(np.arange(len(self.df)), int(fraction * len(self.df)))
             print(len(indices))
             self.df = self.df.iloc[indices, :]
 
-        self.sequences = list(self.df[seq_key])
+        self.sequences = list(self.df[seq_key].values)
         self.target_encoder, self.unique_target_values = {'IC': 0, 'EV': 1}, ['IC', 'EV']
 
-        self.targets = self.df[target_key].values
+        if target_key is not None:
+            self.targets = self.df[target_key].values
 
-
-        weights = []
-        n_total_samples = len(self.df)
-        for target in self.unique_target_values:
-            n_samples = len(self.df[self.df[target_key] == target])
-            weights.append((n_total_samples / n_samples) - 1.)
-        self.weights = weights
+            weights = []
+            n_total_samples = len(self.df)
+            for target in self.unique_target_values:
+                n_samples = len(self.df[self.df[target_key] == target])
+                weights.append((n_total_samples / n_samples) - 1.)
+            self.weights = weights
+        else:
+            self.targets = None
+            self.weights = None
 
         self.cat_info = {}
         for cat_key in categorical_keys:
@@ -144,8 +149,10 @@ class RNASeqDataset(Dataset):
         data.sort(key=lambda x: len(x[self.seq_key]), reverse=True)
         collated_data = {
             self.seq_key: [x[self.seq_key] for x in data],
-            self.target_key: torch.tensor([x[self.target_key] for x in data], dtype=torch.long)
         }
+
+        if self.target_key is not None:
+            collated_data[self.target_key] = torch.tensor([x[self.target_key] for x in data], dtype=torch.long)
 
         for key in self.cat_keys:
             collated_data[key] = torch.tensor([x[key] for x in data], dtype=torch.long)
@@ -158,9 +165,9 @@ class RNASeqDataset(Dataset):
     def __getitem__(self, index):
         encoded_seq = torch.tensor(self.seq2ids(self.sequences[index], add_bos=True, add_eos=True),
                                    dtype=torch.long)
-        encoded_y = self.target_encoder[self.targets[index]]
-        item = {self.seq_key: encoded_seq,
-                self.target_key: encoded_y}
+        item = {self.seq_key: encoded_seq}
+        if self.target_key is not None:
+            item[self.target_key] = self.target_encoder[self.targets[index]]
 
         for key in self.cat_keys:
             item[key] = self.cat_info[key]['encoder'][self.df[key].values[index]]
