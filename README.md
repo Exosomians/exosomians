@@ -67,7 +67,7 @@ config = {
     'n_head_hidden': 128,
 }
 
-model = exo.ml.ExoGRU
+model = exo.ml.ExoGRU(**config)
 
 model.fit(max_epochs=2000,
           train_size=0.8,
