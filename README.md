@@ -52,19 +52,17 @@ exo.ml.ExoGRU.setup_dataset(path='/home/mohsen/projects/exosomians-v2/data/desig
                             fraction=0.5)
 
 config = {
-    'n_conv_blocks': 2,
-    'n_conv_layers': 3,
-    'kernel_size': 7,
-    'n_filters': 32,
-    'lr': 1e-3,
-    'pooling': 'avg',
-    'pooling_size': 2,
-    'activation_fn': 'tanh',
-    'use_batch_norm': True,
-    'use_layer_norm': False,
+    'activation_fn': 'relu',
+    'batch_size': 32,
+    'bidirectional': False,
     'dropout_rate': 0.1,
-    'n_head_layers': 2,
-    'n_head_hidden': 128,
+    'lr': 0.00011342016019358544,
+    'n_head_hidden': 512, 'n_head_layers': 2,
+    'n_hidden': 1024,
+    'n_layers': 1,
+    'network': 'exogru',
+    'use_batch_norm': True,
+    'use_layer_norm': False
 }
 
 model = exo.ml.ExoGRU(**config)
