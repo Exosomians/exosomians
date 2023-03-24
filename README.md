@@ -46,10 +46,10 @@ df_results = model.predict(data, batch_size=128)  # Results will be stored in a 
 ```python
 import exopy as exo
 
-exo.ml.ExoGRU.setup_dataset(path='/home/mohsen/projects/exosomians-v2/data/design.mat.csv',
+exo.ml.ExoGRU.setup_dataset(path='/path/to/dataset/design.mat.csv',
                             seq_key='seq',
                             target_key='label',
-                            fraction=0.5)
+                            fraction=1.0)
 
 config = {
     'activation_fn': 'relu',
