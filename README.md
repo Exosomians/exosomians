@@ -77,3 +77,11 @@ model.fit(max_epochs=2000,
 
 ```
 
+### Sample Notebooks
+
+| Model   | Path                                                                                                                                |
+|---------|-------------------------------------------------------------------------------------------------------------------------------------|
+| ExoGRU  | [notebooks/training_demos/ExoGRU.ipynb](https://github.com/Exosomians/exosomians/blob/main/notebooks/training_demos/ExoGRU.ipynb)   |
+| ExoCNN  | [notebooks/training_demos/ExoCNN.ipynb](https://github.com/Exosomians/exosomians/blob/main/notebooks/training_demos/ExoCNN.ipynb)   |
+| ExoLSTM | [notebooks/training_demos/ExoLSTM.ipynb](https://github.com/Exosomians/exosomians/blob/main/notebooks/training_demos/ExoLSTM.ipynb) |
+
