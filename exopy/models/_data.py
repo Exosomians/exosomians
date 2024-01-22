@@ -184,10 +184,14 @@ class RNASeqCSVDataset(Dataset):
         valid_indices = indices[int(train_size * n_samples):]
 
         train_dataloader = DataLoader(self, sampler=SubsetRandomSampler(train_indices),
-                                      num_workers=max(1, min(6, multiprocessing.cpu_count() // 2)), pin_memory=False,
+                                    #   num_workers=max(1, min(6, multiprocessing.cpu_count() // 2)), 
+                                    num_workers=0,
+                                      pin_memory=False,
                                       batch_size=batch_size, collate_fn=self.collate_fn)
         valid_dataloader = DataLoader(self, sampler=SubsetRandomSampler(valid_indices),
-                                      num_workers=max(1, min(6, multiprocessing.cpu_count() // 2)), pin_memory=False,
+                                    #   num_workers=max(1, min(6, multiprocessing.cpu_count() // 2)), 
+                                      pin_memory=False,
+                                      num_workers=0,
                                       batch_size=batch_size, collate_fn=self.collate_fn)
 
         return train_dataloader, valid_dataloader

@@ -1,3 +1,4 @@
+from matplotlib.pyplot import step
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -33,7 +34,8 @@ class ExoNetModule(pl.LightningModule):
 
         self.save_hyperparameters(network, self.config)
 
-        self.input_embedding = nn.Embedding(self.config.n_tokens, self.config.n_tokens)
+        self.input_embedding = nn.Embedding(self.config.n_tokens, self.config.n_tokens,
+                                            padding_idx=self.config.token_encoder[SpecialTokens.pad])
         self.input_embedding.weight.data.copy_(torch.eye(self.config.n_tokens))
         self.input_embedding.weight.requires_grad = False
 
@@ -86,7 +88,7 @@ class ExoNetModule(pl.LightningModule):
                 n_input=2 * self.config.n_layers * self.config.n_hidden if self.config.bidirectional else self.config.n_hidden * self.config.n_layers,
                 n_hidden=self.config.n_head_hidden,
                 n_layers=self.config.n_head_layers,
-                n_output=self.config.n_output if self.config.n_output > 2 else 1,
+                n_output=self.config.n_output,
                 use_batch_norm=self.config.use_batch_norm,
                 use_layer_norm=self.config.use_layer_norm,
                 dropout_rate=self.config.dropout_rate,
@@ -130,7 +132,7 @@ class ExoNetModule(pl.LightningModule):
                 n_input=2 * self.config.n_layers * self.config.n_hidden if self.config.bidirectional else self.config.n_hidden * self.config.n_layers,
                 n_hidden=self.config.n_head_hidden,
                 n_layers=self.config.n_head_layers,
-                n_output=self.config.n_output if self.config.n_output > 2 else 1,
+                n_output=self.config.n_output,
                 use_batch_norm=self.config.use_batch_norm,
                 use_layer_norm=self.config.use_layer_norm,
                 dropout_rate=self.config.dropout_rate,
@@ -141,12 +143,13 @@ class ExoNetModule(pl.LightningModule):
 
         self.loss = nn.CrossEntropyLoss() if self.config.n_output > 2 else nn.BCEWithLogitsLoss(
             pos_weight=torch.tensor(self.pos_weight, device=device))
-
+        
+        task = 'multiclass' if self.config.n_output > 2 else 'binary'
         self.eval_metrics = {
-            'auroc': AUROC(pos_label=1).to(device),
-            'precision': Precision().to(device),
-            'recall': Recall().to(device),
-            'specificity': Specificity().to(device),
+            'auroc': AUROC(task=task).to(device),
+            'precision': Precision(task=task).to(device),
+            'recall': Recall(task=task).to(device),
+            'specificity': Specificity(task=task).to(device),
         }
 
     def set_config(self, network, **config):
@@ -221,8 +224,12 @@ class ExoNetModule(pl.LightningModule):
         self.config['lr'] = config.get('lr', 1e-4)
 
     def forward(self, tensors, return_embeddings=False):
-        x = [self.input_embedding(x_i) for x_i in tensors[ExoNetCONSTANTS.SEQ_KEY]]
-        x = nn.utils.rnn.pack_sequence(x, enforce_sorted=False)
+        if isinstance(tensors, torch.Tensor):
+            if tensors.ndim == 3:  # (batch_size, seq_len, n_channels)
+                x = tensors
+        else:
+            x = [self.input_embedding(x_i) for x_i in tensors[ExoNetCONSTANTS.SEQ_KEY]]
+            x = nn.utils.rnn.pack_sequence(x, enforce_sorted=False)
 
         if self.network in ['exonet']:
             x, _ = nn.utils.rnn.pad_packed_sequence(x,
@@ -269,17 +276,19 @@ class ExoNetModule(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(list(filter(lambda p: p.requires_grad, self.parameters())), lr=self.config.lr)
-        scheduler = lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
-        return [optimizer], [scheduler]
+        # scheduler = lr_scheduler.StepLR(optimizer, gamma=0.9, step_size=20)
+        return optimizer
 
     def training_step(self, batch, batch_idx):
         y_pred = self.forward(batch)
         y_true = batch[ExoNetCONSTANTS.Y_KEY]
         batch_size = y_pred.shape[0]
 
-        loss = self.loss(y_pred.squeeze(), y_true.float())
+        y_true = y_true.unsqueeze(1).float()
+
+        loss = self.loss(y_pred, y_true)
         results = {
-            key: f(y_pred.squeeze(), y_true).item() for key, f in self.eval_metrics.items()
+            key: f(y_pred, y_true).item() for key, f in self.eval_metrics.items()
         }
         results['loss'] = loss
 
@@ -292,16 +301,18 @@ class ExoNetModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         y_pred = self.forward(batch)
         y_true = batch[ExoNetCONSTANTS.Y_KEY]
+        batch_size = y_pred.shape[0]
 
-        loss = self.loss(y_pred.squeeze(), y_true.float())
+        y_true = y_true.unsqueeze(1).float()
+
+        loss = self.loss(y_pred, y_true)
         results = {
-            key: f(y_pred.squeeze(), y_true).item() for key, f in self.eval_metrics.items()
+            key: f(y_pred, y_true).item() for key, f in self.eval_metrics.items()
         }
         results['loss'] = loss.item()
 
-        return results
+        for key in results.keys():
+            value = results[key].item() if isinstance(results[key], torch.Tensor) else results[key]
+            self.log(f'val_{key}', value, prog_bar=True, batch_size=batch_size)
 
-    def validation_epoch_end(self, outputs):
-        for key in outputs[0].keys():
-            epoch_val = float(np.mean([output[key] for output in outputs]))
-            self.log(f'val_{key}', epoch_val, prog_bar=True, on_epoch=True)
+        return results
